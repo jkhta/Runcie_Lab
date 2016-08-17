@@ -9,9 +9,7 @@ time_scale = 1
 init <- c(0, 0, 0, 0, 0, 0, 0, 1) #SFT, TMF, SP, SPGB, FA, INF, #leaves, change in #leaves
 inf_info <- data.frame()
 inf_first <- data.frame()
-low <- c(0.01,0.005,0.05,0.1,rep(0.05,7),rep(0.01,11),rep(0.3,6),0.3,0)
-high <- c(0.02,0.01,0.1,0.2,rep(0.1,7),rep(10,11),rep(0.6,6),0.5,1)
-  
+
 parameters_list <- list(
   B_1 = 0.01, #production of SFT per leaf
   B_5 = 0.005, #production of FA per leaf/time unit
@@ -21,7 +19,7 @@ parameters_list <- list(
   B_5_4 = 0.01, #activation of SPGB by FA
   B_14_5 = 0.01, #activation of FA by SFT:SPGB complex
   B_6_5 = 0.01, #activation of FA by INF
-  B_14_6 = 0.3, #activation of INF by SFT:SPGB complex
+  B_14_6 = 0.5, #activation of INF by SFT:SPGB complex
   B_5_6 = 0.01, #activation of INF by FA
   B_1_5 = 0.01, #activation of FA by SFT in the inflorescence meristem
   K_34 = 0.01, 
@@ -35,47 +33,14 @@ parameters_list <- list(
   K_14_6 = 0.01,
   K_34_6 = 0.01,
   K_1_5 = 0.01,
-  d1 = 0.1,
-  d2 = 0.1,
-  d3 = 0.1,
-  d4 = 0.1,
-  d5 = 0.1,
-  d6 = 0.1,
-  split = 0.2,
-  sink_decrease = 0
-)
-
-parameters_sample <- list(
-  B_1 = 0.01, #production of SFT per leaf
-  B_5 = 0.005, #production of FA per leaf/time unit
-  B_3_1 = 0.05, #production of SP before branching
-  B_3_2 = 0.1, #production of SP after branching
-  B_5_2 = 0.01, #activation of TMF by FA
-  B_5_4 = 0.01, #activation of SPGB by FA
-  B_14_5 = 0.01, #activation of FA by SFT:SPGB complex
-  B_6_5 = 0.01, #activation of FA by INF
-  B_14_6 = 0.3, #activation of INF by SFT:SPGB complex
-  B_5_6 = 0.01, #activation of INF by FA
-  B_1_5 = 0.01, #activation of FA by SFT in the inflorescence meristem
-  K_34 = 0.01, 
-  K_14 = 0.01,
-  K_5_2 = 0.01,
-  K_5_4 = 0.01,
-  K_14_5 = 0.01,
-  K_6_5 = 0.01,
-  K_34_5 = 0.01,
-  K_5_6 = 0.01,
-  K_14_6 = 0.01,
-  K_34_6 = 0.01,
-  K_1_5 = 0.01,
-  d1 = 0.1,
-  d2 = 0.1,
-  d3 = 0.1,
-  d4 = 0.1,
-  d5 = 0.1,
-  d6 = 0.1,
-  split = 0.2,
-  sink_decrease = 0
+  d1 = 0.3,
+  d2 = 0.3,
+  d3 = 0.3,
+  d4 = 0.3,
+  d5 = 0.3,
+  d6 = 0.3,
+  split = 0.3,
+  sink_decrease = 0.1
 )
 
 set_parameters <- list(
@@ -93,7 +58,7 @@ parameter_set$init <- init
 
 #changing inflorescence threshold (SFT concentration needed) affects flowering time of initial segment and also sympodial segments, which it shouldn't
 create_inf <- function(inf,a,split_value) {
-  if(inf > 0.05) {
+  if(inf > 0.1) {
     y <- c(0, 0, 0, a, split_value, 0) #SFT flux, SFT, FA, time initiated, sink power, flowering status
     inf_info <<- rbind(inf_info, y)
     return(inf)
@@ -151,8 +116,6 @@ tomato_veg_valentim <- function(t, X, parms=NULL,...) {
     #[Activation of INF by SFT:SPGB + activation by FA] * inhibition by SP:SPGB
     INF = (B_14_6 * x_14/(K_14_6 + x_14) + B_5_6 * X[5]/(K_5_6 + X[5])) * K_34_6/(K_34_6 + x_34)
     
-    create_inf(INF,as.numeric(t),split)
-    
     #check to see if there are any inflorescence meristems; if there are then calculates how much each inflorescence meristem takes away the SFT pool
     ###additional features to add
     ###1. tell when the IM transitions to FM based on LFY concentration
@@ -176,21 +139,9 @@ tomato_veg_valentim <- function(t, X, parms=NULL,...) {
         SFT_im = SFT * inf_info[i,5]
         FA_im = FA * inf_info[i,5]
         INF_im = INF * inf_info[i,5]
-        SFT = SFT - SFT_im
-        FA = FA - FA_im
-        INF = INF - INF_im
-        inf_info[i,1] <<- SFT_im
-      }
-    }
-    
-    if(nrow(inf_info) > 0){
-      for(i in 1:nrow(inf_info)){
-        SFT_im = SFT * inf_info[i,5]
-        FA_im = FA * inf_info[i,5]
-        INF_im = INF * inf_info[i,5]
-        SFT = SFT - SFT_im
-        FA = FA - FA_im
-        INF = INF - INF_im
+        SFT <- SFT - SFT_im
+        FA <- FA - FA_im
+        INF <- INF - INF_im
         inf_info[i,1] <<- SFT_im
       }
     }
@@ -199,19 +150,22 @@ tomato_veg_valentim <- function(t, X, parms=NULL,...) {
     FA_veg = FA
     INF_veg = INF
     
+    #order of this is really important, it should come after reduction of vegetative partitioning
+    create_inf(INF_veg,as.numeric(t),split)
+    
     #multiples the SFT flux in each inflorescence mersitem by the time step because running this way does not automatically scale the ODE solving
-    if(nrow(inf_info) > 0){
-      inf_info[,1] <<- inf_info[,1] * time_step
-    }
+    # if(nrow(inf_info) > 0){
+    #   inf_info[,1] <<- inf_info[,1] * time_step
+    # }
     
     #calculates SFT pool based on the SFT flux into each inflorescence meristem that will lead to LFY production
     
     if(nrow(inf_info) > 0){
       for(i in 1:nrow(inf_info)){
-        s2 <- inflorescence_check(inf_info[i,])
-        inf_info[i,] <<- s2[2,][2:7]
+        # s2 <- inflorescence_check(inf_info[i,])
+        # inf_info[i,] <<- s2[2,][2:7]
         #sink power should follow some curve (beta function? normal distribution?)
-        inf_info[i,5] <<- inf_info[i,5] + sink_decrease * time_step
+        inf_info[i,5] <<- inf_info[i,5] - sink_decrease * time_step
       }
     }
 
@@ -262,8 +216,7 @@ tomato_veg_valentim <- function(t, X, parms=NULL,...) {
       Derivatives = derivatives,
       globals = c(
         x_14 = x_14,
-        x_34 = x_34,
-        INF = INF
+        x_34 = x_34
       )
     ))
   })
@@ -294,6 +247,18 @@ fit_model = function(parms){
             # events = list(func = events_fun,root=T))
   return(s1)
 }
+
+fit_model_old = function(parms){
+  s1 <- ode(y = c(parms$init),
+            times = t_run,
+            func = tomato_veg_valentim,
+            parms=parms,
+            method='euler')
+  # rootfun = root_fun,
+  # events = list(func = eventsfun,root=T,terminalroot=terminalroot))
+  return(s1)
+}
+
 
 inflorescence_check <- function(values){
   # j <- seq(as.numeric(values[3]),max(t_run), by = 0.1)
@@ -327,6 +292,7 @@ genotype_parms = function(genotype,parms){
 
 inf_info <- data.frame()
 s1 <- fit_model(parameter_set)
+s1 <- fit_model_old(parameter_set)
 
 
 cols = c('red','blue','black','green','gray')
@@ -340,7 +306,7 @@ lines(s1[,1]*time_scale,s1[,4],col=cols[3])
 lines(s1[,1]*time_scale,s1[,5],col=cols[4])
 lines(s1[,1]*time_scale,s1[,6],col=cols[5])
 lines(s1[,1]*time_scale,s1[,7],col=cols[5])
-lines(s1[,1]*time_scale,s1[,11],col=cols[5])
+lines(s1[,1]*time_scale,s1[,13],col=cols[5])
 lines(s1[,1]*time_scale,s1[,1],col=cols[1], lty = 2)
 lines(s1[,1]*time_scale,s1[,18],col=cols[2], lty = 2)
 lines(s1[,1]*time_scale,s1[,20],col=cols[3], lty = 2)
@@ -352,7 +318,7 @@ for(i in 2:5){
 
 legend('topright',legend=c('SFT','TMF','IM','FA'),col=cols,lty=1, cex = 0.75)
 
-setwd("/Users/jkhta/Desktop/")
+setwd("/Users/jkhta/Runcie_Lab/project_marinara/Fake_Data/")
 data_model = read.delim('Tomat_Mutant_Data.csv',sep=',')
 data_model$pred_First = NA
 data_model$pred_Second = NA
@@ -400,8 +366,9 @@ obj_fun <- function(params) {
   return(score)
 }
 
-low <- c(0.01,0.005,0.05,0.1,rep(0.05,7),rep(0.01,11),rep(0.3,6),0.3,0)
-high <- c(0.02,0.01,0.1,0.2,rep(0.1,7),rep(10,11),rep(0.6,6),0.5,1)
+low <- c(0.01,0.005,0.05,0.1,rep(0.05,7),rep(0.01,11),rep(0.3,6),0.1,0)
+high <- c(0.02,0.01,0.1,0.2,rep(0.3,7),rep(10,11),rep(0.6,6),0.9,0.1)
 
 counter <- 0
+parameters_sample <- unlist(parameters_sample)
 GenSA(parameters_sample, obj_fun, lower = low, upper = high)
