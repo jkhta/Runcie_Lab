@@ -1,6 +1,6 @@
 Genotype,First,Second,Third,Fourth
-WT,8,3,3,3
-sft,13,1,1,1
-tmf,5,3,3,3
-sp,8,3,2,1
-fa,10,5,4,3
+WT,8,11,14,17
+sft,13,14,15,16
+tmf,5,8,11,14
+sp,8,11,13,14
+fa,10,15,19,22

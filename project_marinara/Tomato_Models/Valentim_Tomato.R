@@ -3,7 +3,7 @@ library(GenSA)
 rm(list = ls())
 
 time_step <- 0.01
-t_run <- seq(0, 20, by = time_step)
+t_run <- seq(0, 25, by = time_step)
 small_step <- c(0, time_step)
 time_scale = 1
 init <- c(0, 0, 0, 0, 0, 0, 0, 1) #SFT, TMF, SP, SPGB, FA, INF, #leaves, change in #leaves
@@ -327,11 +327,17 @@ data_model$pred_Fourth = NA
 
 for(gen in data_model$Genotype){
   i = data_model$Genotype == gen
-  print(data_model[i,])
-  # genotype_parms(gen,parameters_list)
-  # inf_info <- data.frame()
-  # s1 <- fit_model(new_parms)
-  # data_model[i,6:9] = inf_info[,4][1:4]
+  print(gen)
+  new_parms <- genotype_parms(gen,parameter_set)
+  print(new_parms$mutants)
+  inf_info <<- data.frame()
+  inf_first <<- vector()
+  s1 <- fit_model(new_parms)
+  inf_first <- inf_info[1:4,4]
+  if(length(inf_first) == 0){
+    inf_first <- rep(NA,4)
+  }
+  data_model[i,6:9] = inf_first
 }
 
 data_model[is.na(data_model)] <- 50
@@ -349,7 +355,7 @@ obj_fun <- function(params) {
   
   for(gen in data_model$Genotype){
     i = data_model$Genotype == gen
-    genotype_parms(gen,c(j,set_parameters))
+    new_parms <- genotype_parms(gen,c(j,set_parameters))
     inf_info <<- data.frame()
     inf_first <<- vector()
     s1 <- fit_model(new_parms)
@@ -369,6 +375,15 @@ obj_fun <- function(params) {
 low <- c(0.01,0.005,0.05,0.1,rep(0.05,7),rep(0.01,11),rep(0.3,6),0.1,0)
 high <- c(0.02,0.01,0.1,0.2,rep(0.3,7),rep(10,11),rep(0.6,6),0.9,0.1)
 
+op_parms <- c(sample(seq(0.01, 0.02, by = 0.001), 1),
+              sample(seq(0.005, 0.01, by = 0.001), 1),
+              sample(seq(0.05, 0.1, by = 0.01), 1),
+              sample(seq(0.1, 0.2, by = 0.01), 1),
+              sample(seq(0.05, 0.3, by = 0.01), 7),
+              sample(seq(0.01, 10, by = 0.01), 11),
+              sample(seq(0.3, 0.6, by = 0.01), 6),
+              sample(seq(0.1, 0.9, by = 0.01), 1),
+              sample(seq(0, 0.1, by = 0.01), 1))
+
 counter <- 0
-parameters_sample <- unlist(parameters_sample)
-GenSA(parameters_sample, obj_fun, lower = low, upper = high)
+GenSA(op_parms, obj_fun, lower = low, upper = high)
