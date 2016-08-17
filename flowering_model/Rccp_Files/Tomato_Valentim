@@ -1,0 +1,136 @@
+#include <Rcpp.h>
+using namespace Rcpp;
+#include <math.h>
+
+
+// [[Rcpp::export]]
+List c_tomato_model(NumericVector t, NumericVector X, List parms_list) {
+	//NumericVector X,
+	// parms_list) 
+        double B_1				= parms_list["B_1"];
+        double B_5				= parms_list["B_5"];
+        double B_3_1			= parms_list["B_3_1"];
+        double B_3_2 			= parms_list["B_3_2"];
+        double B_5_2			= parms_list["B_5_2"];
+        double B_5_4			= parms_list["B_5_4"];
+        double B_14_5			= parms_list["B_14_5"];
+        double B_6_5			= parms_list["B_6_5"];
+        double B_14_6			= parms_list["B_14_6"];
+        double B_5_6			= parms_list["B_5_6"];
+        double B_1_5 			= parms_list["B_1_5"];
+        double K_34 			= parms_list["K_34"];
+        double K_14 			= parms_list["K_14"];
+        double K_5_2			= parms_list["K_5_2"];
+        double K_5_4 			= parms_list["K_5_4"];
+        double K_14_5 			= parms_list["K_14_5"];
+        double K_6_5 			= parms_list["K_6_5"];
+        double K_34_5 			= parms_list["K_34_5"];
+        double K_5_6 			= parms_list["K_5_6"];
+        double K_14_6 			= parms_list["K_14_6"];
+        double K_34_6 			= parms_list["K_34_6"];
+        double K_1_5 			= parms_list["K_1_5"];
+        double d1 				= parms_list["d1"];
+        double d2				= parms_list["d2"];
+        double d3 				= parms_list["d3"];
+        double d4				= parms_list["d4"];
+        double d5 				= parms_list["d5"];
+        double d6				= parms_list["d6"];
+        double split 			= parms_list["split"];
+        double sink_decrease 	= parms_list["sink_decrease"];
+        
+        NumericVector v_35S   = as<NumericVector>(parms_list["v_35S"]); 
+        NumericVector mutants = as<NumericVector>(parms_list["mutants"]); 
+    
+    //Hub Protein-Protein Binding
+    //SFT:SPGB
+        double x_14 = K_34 * X[0] * X[3]/(K_14 * K_34 + K_14 * X[2] + K_34 * X[0])
+    //SP:SPGB
+        double x_34 = K_14 * X[2] * X[3]/(K_14 * K_34 + K_14 * X[2] + K_34 * X[0])
+    //SFT per leaf
+        double SFT = B_1 * X[6]
+    //FA -> TMF
+        double TMF = B_5_2 * X[4]/(K_5_2 + X[4])
+    //SP
+        double SP = B_3
+    //FA -> SPGB
+        double SPGB = B_5_4 * X[4]/(K_5_4 + X[5])
+    //FA: FA per leaf + (SFT:SPGB -> FA + INF -> FA) * SP:SPGB -| FA
+        double FA = B_5 * X[6] + (B_14_5 * x_14/(K_14_5 + x_14) + B_6_5*X[6]/(K_6_5 + X[6])) * K_34_5/(K_34_5 + x_34)
+    //INF: (SFT:SPGB -> INF + FA -> INF) * SP:SPGB -| INF
+        double INF = (B_14_6 * x_14/(K_14_6 + x_14) + B_5_6 * X[5]/(K_5_6 + X[5])) * K_34_6/(K_34_6 + x_34)
+
+	//Hub Gene Activation
+    //LFY -> FD
+        double p_4_3 = pow(X[3],h_4_3) / (pow(K_4_3,h_4_3) + pow(X[3],h_4_3));
+    //FT:FD -> LFY
+        double p_13_4 = pow(K_23_4,h_23_4) * pow(x_13,h_13_4) / (pow(K_13_4,h_13_4) * pow(K_23_4,h_23_4) + pow(K_23_4,h_23_4)*pow(x_13,h_13_4) + pow(K_13_4,h_13_4)*pow(x_23,h_23_4));
+    //TFL1:FD -> LFY
+        double p_23_4 = pow(K_13_4,h_13_4) * pow(x_23,h_23_4) / (pow(K_13_4,h_13_4) * pow(K_23_4,h_23_4) + pow(K_23_4,h_23_4)*pow(x_13,h_13_4) + pow(K_13_4,h_13_4)*pow(x_23,h_23_4));
+    //AP1 -> LFY
+        double p_5_4 = pow(X[4],h_5_4) / (pow(K_5_4,h_5_4) + pow(X[4],h_5_4));
+    //FT:FD -> AP1
+        double p_13_5 = pow(K_23_5,h_23_5) * pow(x_13,h_13_5) / (pow(K_13_5,h_13_5) * pow(K_23_5,h_23_5) + pow(K_23_5,h_23_5)*pow(x_13,h_13_5) + pow(K_13_5,h_13_5)*pow(x_23,h_23_5));
+    //TFL1:FD -> AP1
+        double p_23_5 = pow(K_13_5,h_13_5) * pow(x_23,h_23_5) / (pow(K_13_5,h_13_5) * pow(K_23_5,h_23_5) + pow(K_23_5,h_23_5)*pow(x_13,h_13_5) + pow(K_13_5,h_13_5)*pow(x_23,h_23_5));
+    //LFY -> AP1
+        double p_4_5 = pow(X[3],h_4_5) / (pow(K_4_5,h_4_5) + pow(X[3],h_4_5));
+    
+	//Synthesis Rates
+	  NumericMatrix rho(5,3);
+    
+	  rho(0,0) = 1;
+	  rho(0,1) = 0;
+	  rho(0,2) = 0;
+    
+	  rho(1,1) = pow(T_f,h_5_2) / (pow(T_f,h_5_2)  + pow(X[4],h_5_2));
+	  rho(1,2) = 0;
+	  rho(1,0) = 1; // - rho(1,1); Correction not done in Jaeger et al.
+    
+	  rho(2,1) = p_4_3;
+	  rho(2,0) = 1 - rho(2,1);
+	  rho(2,2) = 0;
+    
+	  rho(3,0) = (1 - p_13_4 - p_23_4) * (1-p_5_4);
+	  rho(3,1) = p_13_4*(1-p_5_4) + (1 - p_13_4 - p_23_4)*p_5_4;
+	  rho(3,2) = p_13_4*p_5_4;
+    
+	  rho(4,0) = (1 - p_13_5 - p_23_5) * (1-p_4_5);
+	  rho(4,1) = p_13_5*(1-p_4_5) + (1 - p_13_5 - p_23_5)*p_4_5;
+	  rho(4,2) = p_13_5*p_4_5;
+    
+	// FT not calculated here
+	// eta_leaf = 0.01
+	// v1[0] = eta_leaf * t;
+    
+	  NumericVector Vout(7);
+    
+	  Vout[0] = v_35S[0] + (rho(0,0)*eta_leaf*X[5] + rho(0,1)*v2[0] + rho(0,2)*v3[0]) * (1-mutants[0]) - (delta[0] * X[0]);
+	  Vout[1] = v_35S[1] + (rho(1,0)*v1[1] + rho(1,1)*v2[1] + rho(1,2)*v3[1]) * (1-mutants[1]) - (delta[1] * X[1]);
+	  Vout[2] = v_35S[2] + (rho(2,0)*v1[2] + rho(2,1)*v2[2] + rho(2,2)*v3[2]) * (1-mutants[2]) - (delta[2] * X[2]);
+	  Vout[3] = v_35S[3] + (rho(3,0)*v1[3] + rho(3,1)*v2[3] + rho(3,2)*v3[3]) * (1-mutants[3]) - (delta[3] * X[3]);
+	  Vout[4] = v_35S[4] + (rho(4,0)*v1[4] + rho(4,1)*v2[4] + rho(4,2)*v3[4]) * (1-mutants[4]) - (delta[4] * X[4]);
+	  Vout[5] = X[6];
+	  
+	  // Rcout << v_35S[0] << " ";
+	  // Rcout << rho(0,0) << " ";
+	  // Rcout << v1[0] << " ";
+	  // Rcout << rho(0,1) << " ";
+	  // Rcout << v2[0] << " ";
+	  // Rcout << rho(0,2) << " ";
+	  // Rcout << v3[0] << "\n";
+	  // 
+	  // 
+	  // Rcout << Vout[0] << " ";
+	  // Rcout << Vout[1] << " ";
+	  // Rcout << Vout[2] << " ";
+	  // Rcout << Vout[3] << " ";
+	  // Rcout << Vout[4] << " ";
+	  // Rcout << Vout[5] << " ";
+	  // Rcout << Vout[6] << "\n\n";
+	  
+        //NumericVector protein_conc  = X;
+    return List::create(_["Derivative"]=Vout, _["States"] = NumericVector::create(_["x_13"] = x_13, _["x_23"] = x_23, _["p_13_4"] = p_13_4, _["p_13_5"] = p_13_5, _["p_23_4"] = p_23_4, _["p_23_5"] = p_23_5, _["p_4_3"] = p_4_3, _["p_4_5"] = p_4_5, _["p_5_4"] = p_5_4));
+	        //_["parm"] = K_13,
+	        //_["states"] = times_model);
+	        //_["death"] = protein_conc);
+}

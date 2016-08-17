@@ -81,7 +81,7 @@ jaeger_model = function(t,X,parms=NULL,...){
 time_scale = 1  # shifts the timescale by scaling both delta and vs and eta_leaf
 time_scale2 = 3
 init = c(0,0,0.1,0.1,0,0,1) # Starts with some FD and LFY, and with a leaf production rate = 1 per unit t.
-t = seq(0,200,by=0.1)
+t_run = seq(0,200,by=0.1)
 
 v_lfy = 0.05;v_ap1 = 0.05
 
@@ -239,6 +239,40 @@ parms_ori = list(
 )
 parms_ori$init <- init
 
+parms_ori = list(
+  K_13 = 0.482188814,
+  K_23 = 2.743194213,
+  K_4_3 = 0.311310135,
+  K_23_4 = 7.443649784,
+  K_13_4 = 0.025,
+  K_23_5 = 0.042090169,
+  K_13_5 = 0.025,
+  K_4_5 = 0.13096201,
+  K_5_4 = 0.279180089,
+  h_4_3 = 4.00,
+  h_23_4 = 3.897157781,
+  h_13_4 = 2.89816155,
+  h_23_5 = 4,
+  h_13_5 = 1.830372619,
+  h_4_5 = 3.714213437,
+  h_5_4 = 4,
+  h_5_2 = 1.019945776,
+  
+  delta    = c(time_scale*2*c(0.05,0.05,0.05,v_lfy,v_ap1),0,0),
+  v_35S    = time_scale*c(0,rep(0,4)),		#check this. 
+  v1       = time_scale*1*c(rep(0.01,4),0),
+  v2       = time_scale*1*c(0.05,0.05,0.05,v_lfy,v_ap1),
+  v3       = time_scale*2*c(0.05,0.05,0.05,v_lfy,v_ap1),
+  eta_leaf = time_scale*0.01, #eta_leaf = time_scale*0.01
+  
+  T_f = 0.2,
+  
+  mutants = rep(0,5),
+  
+  repression = 1
+)
+parms_ori$init <- init
+
 parms_high = list(
         K_13 = 0.39381,
         K_23 = 3.2556,
@@ -358,14 +392,14 @@ eventsdat = data.frame(var=c(1,2),time=10,value=c(1,0),method='rep')
 
 # eventsfun is called whenever a root is reached 
 eventsfun = function(t,y,parms,...){
-  # if(y[5] > 0.2) y[7] = 0
+  if(y[5] > 0.2) y[7] = 0
   y
 }
 terminalroot = 3 # The 2nd root causes the simulation to stop
 
 fit_model_original = function(parms){
   s1 <- ode(y = c(parms$init),
-            times = t,
+            times = t_run,
             func = jaeger_model,
             parms=parms,
             method='lsoda',
@@ -388,7 +422,7 @@ fit_model_new = function(parms){
 }
 
 predict_leaves = function(parms){
-  s1 = fit_model_new(parms)
+  s1 = fit_model_original(parms)
   return(attributes(s1)[['troot']])
 }
 
@@ -474,7 +508,7 @@ s1 <- fit_model_original(parms_ori)
 s2 <- fit_model_new(raa)
 cols = c('red','blue','black','green','gray')
 
-
+x = t_run
 x=x*time_scale
 plot(NA,NA,xlim = range(x),ylim = c(0,1.1))#range(s1[,-1]))
 for(i in 2:6){
@@ -490,14 +524,14 @@ abline(h = 0.2, lty = 2)
 legend('topright',legend=c('FT','TFL1','FD','LFY','AP1'),col=cols,lty=1, cex = 0.75)
 title(main = "Degradation Rates: 30%")
 #Flowering time prediction for various genotypes
-
-data_model = read.delim('Jaeger_data.csv',sep=',')
+setwd("/Users/jkhta/Runcie_Lab/flowering_model/Experimental:Model Data/")
+data_model = read.delim('Jaeger_data_original.csv',sep=',')
 data_model$pred_R = NA
 data_model$pred_C = NA
 
 for(gen in data_model$Genotype){
   i = data_model$Genotype == gen
-  pred = predict_genotype(gen,raa)*time_scale
+  pred = predict_genotype(gen,parms_ori)*time_scale
   data_model$pred_R[i] = pred[1]
   data_model$pred_C[i] = pred[2]-pred[1]
 }

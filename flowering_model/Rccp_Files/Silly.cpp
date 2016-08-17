@@ -28,6 +28,7 @@ List c_jaeger_model_V3(NumericVector t, NumericVector X, List parms_list) {
         double h_5_4    = parms_list["h_5_4"];
         double h_5_2    = parms_list["h_5_2"];
         double eta_leaf = parms_list["eta_leaf"];
+        double eta_leaf2 = parms_list["eta_leaf2"];
         double T_f      = parms_list["T_f"];
         
         NumericVector delta   = as<NumericVector>(parms_list["delta"]); 

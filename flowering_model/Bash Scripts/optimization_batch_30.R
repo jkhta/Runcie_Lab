@@ -14,7 +14,7 @@ t = seq(0, 50, by=0.1)
 v_lfy = 0.05;v_ap1 = 0.05
 op_parms <- c(sample(seq(0.01, 10, by = 0.01), 9), sample(seq(1, 4, by = 0.01), 8))
 init_parms <- op_parms
-low <- c(rep(0.0001, 9), rep(1, 8))
+low <- c(rep(0.01, 9), rep(1, 8))
 upp <- c(rep(10, 9), rep(4, 8))
 
 exp_35S = 1
@@ -146,17 +146,14 @@ eventsfun = function(t,y,parms,...){
 terminalroot = 2 # The 2nd root causes the simulation to stop
 
 fit_model_new = function(parms){
-  s1 <- tryCatch({
-        ode(y = c(parms$init),
+  s1 <- ode(y = c(parms$init),
             times = t,
             func = c_jaeger_model_V3,
             parms=parms,
             method='lsoda',
             rootfun = root_fun,
             events = list(func = eventsfun,root=T,terminalroot=terminalroot))
-      },
-      error = function(x) return(NA)
-      )  
+  
   return(s1)
 }
 

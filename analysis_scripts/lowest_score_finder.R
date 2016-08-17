@@ -1,78 +1,55 @@
-run = as.numeric(commandArgs(t=T)[1])
+library(data.table)
+rm(list = ls())
+x <- "/Users/jkhta/Data/30%_Degrade_Batch#2"
+setwd(x)
+temp <- list.files(pattern = "*.csv")
+
+for(i in 1:length(temp)){
+  j <- temp[i]
+  assign(j,fread(j))
+}
+
+data_names <- c("NA", "K_13", "K_23", "K_4_3", "K_23_4", "K_13_4", "K_23_5", 
+                "K_13_5", "K_4_5", "K_5_4", "h_4_3", "h_23_4", "h_13_4", 
+                "h_23_4", "h_13_5", "h_4_5", "h_5_4", "h_5_2", "Score", 
+                "Iterations")
+
+for(i in ls(pattern = "*_run")) {
+  j <- eval(as.symbol(i))
+  k <- which.min(unlist(j[,(ncol(j)-1), with=FALSE]))
+  l <- j[k,]
+  write.table(l, "lowest_scores_.csv", append = TRUE, sep = ",", row.names = FALSE, col.names = FALSE)
+}
+
+find_lowest <- read.csv("lowest_scores_100%.csv", header = TRUE, stringsAsFactors = FALSE)
+lowest_index <- which.min(find_lowest[,ncol(find_lowest)-1])
+lowest_index <- as.numeric(find_lowest[1,])
+lowest_parms <- lowest_index[1:17]
+lowest_score <- find_lowest[lowest_index,]
+lowest_parms <- as.vector(lowest_score[3:19])
+
+#Add predicted values for the different genotypes----------------------
 
 library(deSolve)
 library(GenSA)
 library(Rcpp)
 
-sourceCpp("Silly.cpp")
+setwd("/Users/jkhta/Runcie_Lab/flowering_model")
+sourceCpp("Rccp_Files/Silly.cpp")
 
 time_scale = 1  # shifts the timescale by scaling both delta and vs and eta_leaf
-time_scale2 = 3
+time_scale2 = 10
 init = c(0,0.1,.1,0.1,0,0,1) # Starts with some FD and LFY, and with a leaf production rate = 1 per unit t.
-t = seq(0, 50, by=0.1)
+t_run = seq(0, 50, by=0.01)
 
 v_lfy = 0.05;v_ap1 = 0.05
 op_parms <- c(sample(seq(0.01, 10, by = 0.01), 9), sample(seq(1, 4, by = 0.01), 8))
 init_parms <- op_parms
-low <- c(rep(0.0001, 9), rep(1, 8))
+low <- c(rep(0.01, 9), rep(1, 8))
 upp <- c(rep(10, 9), rep(4, 8))
 
 exp_35S = 1
 
-baa <- list(
-  
-  delta    = c(time_scale2*2*c(0.05,0.05,0.05,v_lfy,v_ap1),0,0),
-  v_35S    = time_scale2*c(0,rep(0,4)),		#check this. 
-  v1       = time_scale2*1*c(rep(0.01,4),0),
-  v2       = time_scale2*1*c(0.05,0.05,0.05,v_lfy,v_ap1),
-  v3       = time_scale2*2*c(0.05,0.05,0.05,v_lfy,v_ap1),
-  eta_leaf = time_scale2*0.01,
-  
-  T_f = 0.2,
-  
-  mutants = rep(0,5),
-  
-  repression = 1
-)
-
-baa$init <- init
-
-baa2 <- list(
-  
-  delta    = c(time_scale*2*c(0.05,0.05,0.05,v_lfy,v_ap1),0,0),
-  v_35S    = time_scale*c(0,rep(0,4)),		#check this. 
-  v1       = time_scale*1*c(rep(0.01,4),0),
-  v2       = time_scale*1*c(0.05,0.05,0.05,v_lfy,v_ap1),
-  v3       = time_scale*2*c(0.05,0.05,0.05,v_lfy,v_ap1),
-  eta_leaf = time_scale*0.01,
-  
-  T_f = 0.2,
-  
-  mutants = rep(0,5),
-  
-  repression = 1
-)
-
-baa2$init <- init
-parms_ori1 = list(
-  K_13 = 0.39381,
-  K_23 = 3.2556,
-  K_4_3 = 0.28203,
-  K_23_4 = 9.3767,
-  K_13_4 = 0.040555,
-  K_23_5 = 0.033666,
-  K_13_5 = 0.029081,
-  K_4_5 = 0.13032,
-  K_5_4 = 0.28606,
-  h_4_3 = 4.00,
-  h_23_4 = 3.8497,
-  h_13_4 = 4.00,
-  h_23_5 = 4.00,
-  h_13_5 = 1.8217,
-  h_4_5 = 3.9369,
-  h_5_4 = 3.6732,
-  h_5_2 = 1.0239
-)
 parms_ori = list(
   K_13 = 0.39381,
   K_23 = 3.2556,
@@ -108,6 +85,70 @@ parms_ori = list(
 
 parms_ori$init <- init
 
+baa <- list(
+  
+  delta    = c(time_scale2*2*c(0.05,0.05,0.05,v_lfy,v_ap1),0,0),
+  v_35S    = time_scale2*c(0,rep(0,4)),		#check this. 
+  v1       = time_scale2*1*c(rep(0.01,4),0),
+  v2       = time_scale2*1*c(0.05,0.05,0.05,v_lfy,v_ap1),
+  v3       = time_scale2*2*c(0.05,0.05,0.05,v_lfy,v_ap1),
+  eta_leaf = time_scale2*0.01,
+  
+  T_f = 0.2,
+  
+  mutants = rep(0,5),
+  
+  repression = 1
+)
+baa$init <- init
+
+parms_LFY = list(
+  K_13 = 0.39381,
+  K_23 = 3.2556,
+  K_4_3 = 0.28203,
+  K_23_4 = 9.3767,
+  K_13_4 = 0.040555,
+  K_23_5 = 0.033666,
+  K_13_5 = 0.029081,
+  K_4_5 = 0.13032,
+  K_5_4 = 0.28606,
+  h_4_3 = 4.00,
+  h_23_4 = 3.8497,
+  h_13_4 = 4.00,
+  h_23_5 = 4.00,
+  h_13_5 = 1.8217,
+  h_4_5 = 3.9369,
+  h_5_4 = 3.6732,
+  h_5_2 = 1.0239,
+  eta_leaf2 = 0.001
+)
+parms_ori$init <- init
+
+baa$init <- init
+
+parms_LFY_TFL1 = list(
+  K_13 = 0.39381,
+  K_23 = 3.2556,
+  K_4_3 = 0.28203,
+  K_23_4 = 9.3767,
+  K_13_4 = 0.040555,
+  K_23_5 = 0.033666,
+  K_13_5 = 0.029081,
+  K_4_5 = 0.13032,
+  K_5_4 = 0.28606,
+  K_13_2 = 0.1,
+  h_4_3 = 4.00,
+  h_23_4 = 3.8497,
+  h_13_4 = 4.00,
+  h_23_5 = 4.00,
+  h_13_5 = 1.8217,
+  h_4_5 = 3.9369,
+  h_5_4 = 3.6732,
+  h_5_2 = 1.0239,
+  h_13_2 = 2,
+  eta_leaf2 = time_scale2*0.01
+)
+
 op_parms5 <- list(
   K_13 = 7.018845587,
   K_23 = 1.119881897,
@@ -127,6 +168,7 @@ op_parms5 <- list(
   h_5_4 = 0.961109439,
   h_5_2 = 2.572238745
 )
+names(lowest_parms) <- names(op_parms5)
 
 root_fun = function(t,y,parms,...){
   # This tells the ODE solver to trigger an event. It returns a vector. Events are triggered each time an element = 0.
@@ -143,20 +185,16 @@ eventsfun = function(t,y,parms,...){
   y
 }
 
-terminalroot = 2 # The 2nd root causes the simulation to stop
+terminalroot = 3 # The 2nd root causes the simulation to stop
 
 fit_model_new = function(parms){
-  s1 <- tryCatch({
-        ode(y = c(parms$init),
-            times = t,
+  s1 <- ode(y = c(parms$init),
+            times = t_run,
             func = c_jaeger_model_V3,
             parms=parms,
             method='lsoda',
             rootfun = root_fun,
             events = list(func = eventsfun,root=T,terminalroot=terminalroot))
-      },
-      error = function(x) return(NA)
-      )  
   return(s1)
 }
 
@@ -245,36 +283,63 @@ predict_genotype = function(genotype,parms){
   return(predict_leaves(new_parms))
 }
 
-#Score for experimental flowering time - predicted flowering time
-counter <- 0
+setwd("/Users/jkhta/Runcie_Lab/flowering_model/Experimental:Model Data/")
 
-obj_fun4_helper <- function(params) {
-  op_parms <<- params
-  j <- as.list(params)
-  names(j) <- names(op_parms5)
-  counter <<- counter + 1
-  # k <- length(subset(params, c(params < 0.001, params > 10))) * 100
-  data_model <- read.delim('Jaeger_data_New.csv',sep=',')
-  data_model$pred_R = NA
-  data_model$pred_C = NA
-  
-  for(gen in data_model$Genotype){
-    i = data_model$Genotype == gen
-    pred = predict_genotype(gen, c(j, baa))*time_scale
-    data_model$pred_R[i] = pred[1]
-    data_model$pred_C[i] = pred[2]-pred[1]
-  }
-  
-  data_model[is.na(data_model)] <- 50
-  score <- sum((data_model$Ros_Exp - data_model$pred_R)^2 + (data_model$Caul_Exp - data_model$pred_C)^2)
-  out_line <- as.vector(unlist(c(j, score, counter)))
-  data_out <- as.data.frame(t(unname(out_line)))
-  write.table(data_out, file = sprintf("full_run%f.csv", run), append = TRUE, sep = ",", col.names = FALSE)
-  print(out_line)
-  return(score)
+data_model_ori = read.delim('Jaeger_data_New.csv',sep=',')
+data_model_ori$pred_R = NA
+data_model_ori$pred_C = NA
+
+for(gen in data_model_ori$Genotype){
+  i = data_model_ori$Genotype == gen
+  pred = predict_genotype(gen,c(lowest_score, baa))*time_scale
+  data_model_ori$pred_R[i] = pred[1]
+  data_model_ori$pred_C[i] = pred[2]-pred[1]
 }
 
-out <- GenSA(op_parms, obj_fun4_helper, lower = low, upper = upp, control = list(temperature = 50))
-dat <- data.frame(out)
-data_final <- cbind(names(op_parms5), op_parms, dat)
-write.csv(data_final, file = sprintf("run_%f.csv", run))
+names(lowest_parms) <- names(op_parms5)
+lowest_parms <- as.list(lowest_parms)
+data_model_hi = read.delim('Jaeger_data_original.csv',sep=',')
+data_model_hi$pred_R = NA
+data_model_hi$pred_C = NA
+
+for(gen in data_model_hi$Genotype){
+  i = data_model_hi$Genotype == gen
+  pred = predict_genotype(gen,c(lowest_score, baa))*time_scale
+  data_model_hi$pred_R[i] = pred[1]
+  data_model_hi$pred_C[i] = pred[2]-pred[1]
+}
+
+gen = "Col"
+setwd(x)
+write.csv(data_model_hi,"lowest_predicted.csv")
+for(gen in data_model_hi$Genotype){
+  genotype <<- gen
+  new_parms <- genotype_parms(gen, c(lowest_parms, baa))
+  s1 <- fit_model_new(new_parms)
+  cols = c('red','blue','black','green','gray')
+  x_time <- t
+  tiff(filename = sprintf("Graph_%s.tiff", genotype))
+  plot(NA,NA,xlim = range(x_time),ylim = c(0,1))#range(s1[,-1]))
+  for(i in 2:6){
+    lines(s1[,1]*time_scale,s1[,i],col=cols[i-1])
+  }
+  legend('topright',legend=c('FT','TFL1','FD','LFY','AP1'),col=cols,lty=1, cex = 0.75)
+  abline(h = 0.2, lty = 2)
+  abline(h = 0.3, lty = 2)
+  dev.off()
+}
+s1 <- fit_model_new(parms_ori)
+setwd(x)
+write.csv(data_model_hi, file = "lowest_predicted.csv")
+new_parms <- c(lowest_parms, baa)
+s1 <- fit_model_new(c(lowest_parms,baa))
+cols = c('red','blue','black','green','gray')
+x_time <- t
+x_time=x_time*time_scale2
+plot(NA,NA,xlim = range(x_time),ylim = c(0,1))#range(s1[,-1]))
+for(i in 2:6){
+  lines(s1[,1]*time_scale,s1[,i],col=cols[i-1])
+}
+legend('topright',legend=c('FT','TFL1','FD','LFY','AP1'),col=cols,lty=1, cex = 0.75)
+abline(h = 0.2, lty = 2)
+abline(h = 0.3, lty = 2)

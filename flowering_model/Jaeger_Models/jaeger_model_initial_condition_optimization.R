@@ -51,7 +51,7 @@ jaeger_model = function(t,X,parms=NULL,...){
     rho[5,1] = (1 - p_13_5 - p_23_5) * (1-p_4_5); rho[5,2] = p_13_5*(1-p_4_5) + (1 - p_13_5 - p_23_5)*p_4_5; rho[5,3] = p_13_5*p_4_5
     
     v = matrix(0,nr=5,nc=3)
-    v[,1] = c(eta_leaf * X[6], v1[2:3], eta_leaf2 * X[6], v1[5])
+    v[,1] = c(eta_leaf * X[6], v1[2:5])
     v[,2] = v2
     v[,3] = v3  # check this. c(NA,rep(0,1,4))
     
@@ -81,7 +81,7 @@ jaeger_model = function(t,X,parms=NULL,...){
 time_scale = 1  # shifts the timescale by scaling both delta and vs and eta_leaf
 
 init = c(0, 0.6, 0.1, 0.1, 0, 0, 1) # Starts with some FD and LFY, and with a leaf production rate = 1 per unit t.
-t = seq(0,50,by=0.1)
+t = seq(0,200,by=0.1)
 
 v_lfy = 0.05;v_ap1 = 0.05
 
@@ -136,28 +136,21 @@ parms_optimize = list(
   h_4_5 = 3.9369,
   h_5_4 = 3.6732,
   h_5_2 = 1.0239,
-  eta_leaf2 = 0.001
-)
-
-parms_optimize$init <- init
-
-baa <- list(
   
-  delta    = c(time_scale2*2*c(0.05,0.05,0.05,v_lfy,v_ap1),0,0),
-  v_35S    = time_scale2*c(0,rep(0,4)),		#check this. 
-  v1       = time_scale2*1*c(rep(0.01,4),0),
-  v2       = time_scale2*1*c(0.05,0.05,0.05,v_lfy,v_ap1),
-  v3       = time_scale2*2*c(0.05,0.05,0.05,v_lfy,v_ap1),
-  eta_leaf = time_scale2*0.01,
+  delta    = c(time_scale*2*c(0.05,0.05,0.05,v_lfy,v_ap1),0,0),
+  v_35S    = time_scale*c(rep(0, 5)),		#check this. 
+  v1       = time_scale*1*c(0, 0.01, 0.01, 0.01, 0),
+  v2       = time_scale*1*c(0.05,0.05,0.05,v_lfy,v_ap1),
+  v3       = time_scale*2*c(0.05,0.05,0.05,v_lfy,v_ap1),
+  eta_leaf = time_scale*0.01, #eta_leaf = time_scale*0.01
   
   T_f = 0.2,
   
-  mutants = rep(0,5),
+  mutants = rep(0,5)
   
-  repression = 1
 )
 
-baa$init <- init
+parms_ori$init <- init
 
 root_fun = function(t,y,parms,...){
   # This tells the ODE solver to trigger an event. It returns a vector. Events are triggered each time an element = 0.
@@ -175,6 +168,17 @@ eventsfun = function(time = t,y = parms$init,parms,...){
 }
 
 terminalroot = 3 # The 2nd root causes the simulation to stop
+
+fit_model_ori = function(parms){
+  s1 <- ode(y = c(parms$init),
+            times = t,
+            func = jaeger_model,
+            parms=parms,
+            method='lsoda',
+            rootfun = root_fun,
+            events = list(func = eventsfun,root=T,terminalroot=terminalroot))
+  return(s1)
+}
 
 fit_model_new = function(parms){
   s1 <- ode(y = c(parms$init),
@@ -194,75 +198,75 @@ predict_leaves = function(parms){
 
 exp_35S = 1
 
+#Need to comment out init values for optimizing genotype
 genotype_parms = function(genotype,parms){
   new_parms <- parms #parms
-  new_parms$init <- init
   #Col 					#check
   if(genotype == '35S:FT'){ #check
     new_parms$v_35S[1] = exp_35S #1.3-1.8
-    new_parms$init <- c(10, 0.6, 0.1, 0.1, 0, 0, 0)
+    # new_parms$init <- c(10, 0.6, 0.1, 0.1, 0, 0, 0)
   }
   if(genotype == '35S:LFY'){
     new_parms$v_35S[4] = exp_35S #nothing gets is fast enough (minimum = 5 Ros leaves)
-    new_parms$init <- c(0, 0.6, 0.1, 10.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0.6, 0.1, 10.1, 0, 0, 1)
   }
   if(genotype == '35S:TFL1'){ #not with this parameter
     new_parms$v_35S[2] = exp_35S #1
-    new_parms$init <- c(0, 10.7, 0.1, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 10.7, 0.1, 0.1, 0, 0, 1)
   }
   if(genotype == 'lfy-12'){   #check
     new_parms$mutants[4] = 1
-    new_parms$init <- c(0, 0.6, 0.1, 0, 0, 0, 1)
+    # new_parms$init <- c(0, 0.6, 0.1, 0, 0, 0, 1)
   }
   if(genotype == 'ft-10'){	#check
     new_parms$mutants[1] = 1
-    new_parms$init <- c(0, 0.6, 0.1, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0.6, 0.1, 0.1, 0, 0, 1)
   }
   if(genotype == 'tfl-1'){   #check
     new_parms$mutants[2] = 1
-    new_parms$init <- c(0, 0, 0.1, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0, 0.1, 0.1, 0, 0, 1)
   }
   if(genotype == 'fd-2'){    #check
     new_parms$mutants[3] = 0.75
-    new_parms$init <- c(0, 0.6, 0.025, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0.6, 0.025, 0.1, 0, 0, 1)
   }
   if(genotype == 'fdp-1'){   #check
     new_parms$mutants[3] = 0.2
-    new_parms$init <- c(0, 0.6, 0.08, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0.6, 0.08, 0.1, 0, 0, 1)
   }
   if(genotype == 'fd-2 fdp-1'){   #check
     new_parms$mutants[3] = 0.95
-    new_parms$init <- c(0, 0.6, 0.005, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0.6, 0.005, 0.1, 0, 0, 1)
   }
   if(genotype == '35S:TFL1 fd-2'){  #check, exp_35S = 1
     new_parms$v_35S[2] = exp_35S
     new_parms$mutants[3] = 0.75
-    new_parms$init <- c(0, 10.7, 0.025, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 10.7, 0.025, 0.1, 0, 0, 1)
   }
   if(genotype == 'tfl1-1 fd-2'){   #check
     new_parms$mutants[2] = 1
     new_parms$mutants[3] = 0.75
-    new_parms$init <- c(0, 0, 0.025, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0, 0.025, 0.1, 0, 0, 1)
   }
   if(genotype == '35S:FT fd-2'){   #check at exp_35S = 1.0
     new_parms$v_35S[1] = exp_35S
     new_parms$mutants[3] = 0.75
-    new_parms$init <- c(10, 0.6, 0.025, 0.1, 0, 0, 1)
+    # new_parms$init <- c(10, 0.6, 0.025, 0.1, 0, 0, 1)
   }
   if(genotype == 'tfl1-1 fd-2 fdp-1'){  #check
     new_parms$mutants[2] = 1
     new_parms$mutants[3] = .95
-    new_parms$init <- c(0, 0.6, 0.005, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 0.6, 0.005, 0.1, 0, 0, 1)
   }
   if(genotype == '35S:TFL1 fd-2 fdp-1'){  #check
     new_parms$v_35S[2] = exp_35S
     new_parms$mutants[3] = .95
-    new_parms$init <- c(0, 10.7, 0.005, 0.1, 0, 0, 1)
+    # new_parms$init <- c(0, 10.7, 0.005, 0.1, 0, 0, 1)
   }
   if(genotype == '35S:FT fd-2 fdp-1'){  #check, regardless of exp_35S
     new_parms$v_35S[1] = exp_35S
     new_parms$mutants[3] = .95
-    new_parms$init <- c(10, 0.1, 0.005, 0.1, 0, 0, 1)
+    # new_parms$init <- c(10, 0.1, 0.005, 0.1, 0, 0, 1)
   }
   return(new_parms)
 }
@@ -277,14 +281,14 @@ predict_genotype = function(genotype,parms){
 ## Run the model.
 
 new_parms <- parms_ori
-x=t
+x=seq(0,50,by=.1)
 
 genotype = 'Col'
 new_parms = genotype_parms(genotype,parms_ori)
 # new_parms$init = c(0,0.6,.1,0.1,0,0,1) # Modifications for figure SF2
 
 #Plotting protein concentration curves over time
-s1 <- fit_model_new(new_parms)
+s1 <- fit_model_ori(parms_ori)
 cols = c('red','blue','black','green','gray')
 x=x*time_scale
 plot(NA,NA,xlim = range(x),ylim = c(0,1))#range(s1[,-1]))
@@ -292,7 +296,7 @@ for(i in 2:6){
   lines(s1[,1]*time_scale,s1[,i],col=cols[i-1])
 }
 legend('topright',legend=c('FT','TFL1','FD','LFY','AP1'),col=cols,lty=1, cex = 0.75)
-abline(h = 0.3, lty = 2)
+abline(h = 0.2, lty = 2)
 
 #Flowering time prediction for various genotypes
 
@@ -337,42 +341,31 @@ obj_fun <- function(initial_parms) {
   parameters <- parms_optimize
   parameters$init <- initial
   
-  pred <- predict_genotype("35S:FT", parameters)*time_scale
+  pred <- predict_genotype("35S:TFL1 fd-2", parameters)*time_scale
   pred_R <- pred[1]
   pred_C <- pred[2] - pred[1]
   
-  score <- (3.3 - pred_R)^2 + (1.5 - pred_C)^2
+  score <- (24.4 - pred_R)^2 + (5.4 - pred_C)^2
   print(c(initial, pred_R, pred_C, score))
   return(score)
 }
 
 data_model$pred_R[1]
-low <- c(10, 0, 0, 0, 0, 0, 0.9999999999)
-upp <- c(10.00000000001, 11, 11, 11, 1e-10, 1e-10, 1)
-out_35S:FT <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0000001))
+low <- c(0, 0, 0.005, 0, 0, 0, 0.9999999999)
+upp <- c(0.0000000001, 1, 0.0050000001, 1, 1e-10, 1e-10, 1)
+
+out_35S_FT <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0001))
+out_35S_LFY <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0001))
+out_35S_TFL1 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0001))
+out_lfy_12 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0001))
+out_ft_10 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.05))
+out_tfl_1 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0001))
+out_fd_2 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.05))
+out_fdp_1 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0001))
+out_fd_2_fdp_1 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.05))
+out_fdp_1 <- GenSA(init, obj_fun, lower = low, upper = upp, control = list(threshold.stop = 0.0001))
+
+
 dat <- data.frame(out)
 data_final <- cbind(names(op_parms5), op_parms, dat)
 write.csv(data_final, file = sprintf("run_%f.csv", run))
-
-obj_fun4_helper <- function(params) {
-  op_parms <<- params
-  j <- as.list(params)
-  names(j) <- names(op_parms5)
-  counter <<- counter + 1
-  # k <- length(subset(params, c(params < 0.001, params > 10))) * 100
-  data_model <- read.delim('Jaeger_data_New.csv',sep=',')
-  data_model$pred_R = NA
-  data_model$pred_C = NA
-  
-  for(gen in data_model$Genotype){
-    i = data_model$Genotype == gen
-    pred = predict_genotype(gen,c(j,baa2))*time_scale
-    data_model$pred_R[i] = pred[1]
-    data_model$pred_C[i] = pred[2]-pred[1]
-  }
-  data_model[is.na(data_model)] <- 50
-  score <- sum((data_model$Ros_Exp - data_model$pred_R)^2 + (data_model$Caul_Exp - data_model$pred_C)^2)
-  print(c(params, score, counter))
-  return(score)
-}
-GenSA(k, obj_fun4_helper, lower = low, upper = upp)
