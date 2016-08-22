@@ -1,0 +1,142 @@
+#include <Rcpp.h>
+using namespace Rcpp;
+#include <math.h>
+
+
+// [[Rcpp::export]]
+List c_tomato_model(NumericVector t, NumericVector X, List parms_list, DataFrame inf_info_R) {
+	//NumericVector X,
+	// parms_list) 
+        double B_1				= parms_list["B_1"];
+        double B_5				= parms_list["B_5"];
+        double B_3_1			= parms_list["B_3_1"];
+        double B_3_2 			= parms_list["B_3_2"];
+        double B_5_2			= parms_list["B_5_2"];
+        double B_5_4			= parms_list["B_5_4"];
+        double B_14_5			= parms_list["B_14_5"];
+        double B_6_5			= parms_list["B_6_5"];
+        double B_14_6			= parms_list["B_14_6"];
+        double B_5_6			= parms_list["B_5_6"];
+        double B_1_5 			= parms_list["B_1_5"];
+        double K_34 			= parms_list["K_34"];
+        double K_14 			= parms_list["K_14"];
+        double K_5_2			= parms_list["K_5_2"];
+        double K_5_4 			= parms_list["K_5_4"];
+        double K_14_5 			= parms_list["K_14_5"];
+        double K_6_5 			= parms_list["K_6_5"];
+        double K_34_5 			= parms_list["K_34_5"];
+        double K_5_6 			= parms_list["K_5_6"];
+        double K_14_6 			= parms_list["K_14_6"];
+        double K_34_6 			= parms_list["K_34_6"];
+        double K_1_5 			= parms_list["K_1_5"];
+        double d1 				= parms_list["d1"];
+        double d2				= parms_list["d2"];
+        double d3 				= parms_list["d3"];
+        double d4				= parms_list["d4"];
+        double d5 				= parms_list["d5"];
+        double d6				= parms_list["d6"];
+        double split 			= parms_list["split"];
+        double sink_decrease 	= parms_list["sink_decrease"];
+
+        NumericVector delta(6);
+        delta[0] = d1;
+        delta[1] = d2;
+        delta[2] = d3;
+        delta[3] = d4;
+        delta[4] = d5;
+        delta[5] = d6;
+
+        NumericVector v_35S   = as<NumericVector>(parms_list["v_35S"]); 
+        NumericVector mutants = as<NumericVector>(parms_list["mutants"]); 
+    
+    //Hub Protein-Protein Binding
+    //SFT:SPGB
+        double x_14 = K_34 * X[0] * X[3]/(K_14 * K_34 + K_14 * X[2] + K_34 * X[0]);
+
+    //SP:SPGB
+        double x_34 = K_14 * X[2] * X[3]/(K_14 * K_34 + K_14 * X[2] + K_34 * X[0]);
+
+    //SPGB binding probabilities
+        double p_14_5 = K_34_5 * x_14/(K_14_5 * K_34_5 + K_14_5 * x_34 + K_34_5 * x_14);
+        double p_14_6 = K_34_6 * x_14/(K_14_6 * K_34_6 + K_14_6 * x_34 + K_34_6 * x_14);
+
+    //SFT per leaf
+        double SFT = B_1 * X[6];
+
+    //FA -| TMF
+        double TMF = B_5_2 * K_5_2/(K_5_2 + X[4]);
+
+    //SP
+
+    //Specifying different SP derivatives based on prescence of inflorescence meristem!!!!!------------------------------------------------------------------------------------------------------------------------------------------------------------
+    int inf_row = inf_info.nrow();
+
+    double SP = B_3_1;
+
+    if(inf_row > 0) {
+   		SP = B_3_2;
+    } else {
+    	SP = B_3_1;
+    }
+
+    //FA -> SPGB
+        double SPGB = B_5_4 * X[4]/(K_5_4 + X[4])
+
+    //FA: FA per leaf + (SFT:SPGB -> FA + INF -> FA) * SP:SPGB -| FA
+        double FA = B_5 * X[6] + B_14_5 * p_14_5 + B_6_5 * X[5]/(K_6_5 + X[5])
+
+    //INF: (SFT:SPGB -> INF + FA -> INF) * SP:SPGB -| INF
+        double INF = B_14_6 * p_14_6 + (B_5_6 * X[4]/(K_5_6 + X[4])) * K_2_6/(K_2_6 + X[1])
+
+    //Need to specify empty data frame!!!!!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    if(t == 0) {
+    	inf_info_R = DataFrame::create();
+    	inf_row = inf_info_R.nrow();
+    }
+
+    //Specifying meristem resource proportioning
+
+    double SFT_im;
+    double FA_im;
+    double INF_im;
+
+    //for loop (starting position, test statement, increment)
+    if(inf_row > 0) {
+    	for(int i = 0; i < inf_row; i++) {
+    		SFT_im = inf_info[i,4]
+    		FA_im = inf_info[i,4]
+    		INF_im = inf_info[i,4]
+    		SFT = SFT - SFT_im
+        	FA <- FA - FA_im
+        	INF <- INF - INF_im
+        	inf_info[i,1] <<- SFT_im
+    	}
+    }
+
+    double SFT_veg = SFT;
+    double FA_veg = FA;
+    double INF_veg = INF;
+
+    Function create_inf_R("create_inf");
+    List result = create_inf_R(arg1,arg2,arg3);	
+    inf_info_R = as<DataFrame>(result);
+    inf_row = inf_info_R.nrow();
+
+	if(inf_row > 0) {
+		for(int i = 0; i < inf_row; i++) {
+			inf_info[i,4] = inf_info[i,4] - sink_decrease * time_step;
+		}
+	}
+    
+	  NumericVector Vout(8);
+    
+	  Vout[0] = SFT_veg - d1 * X[0];
+	  Vout[1] = TMF - d2 * X[1];
+	  Vout[2] = SP - d3 * X[2];
+	  Vout[3] = SPGB - d4 * X[3];
+	  Vout[4] = FA_veg - d5 * X[4];
+	  Vout[5] = INF_veg - d6 * X[5];
+	  Vout[6] = X[7];
+	  
+    return List::create(_["Derivative"]=Vout, _["States"] = NumericVector::create(_["x_14"] = x_14, _["x_34"] = x_34, _["p_14_5"] = p_14_5, _["p_14_6"] = p_14_6));
+}
